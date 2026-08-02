@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroTopography — ระบบวิเคราะห์โครงสร้างเนื้อเยื่อด้วย TDA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#fafbfc;
+  --surface:#ffffff;
+  --surface-alt:#f4f6f8;
+  --line:#e3e8ee;
+  --line-strong:#cbd5e0;
+  --ink:#12263f;
+  --body:#425466;
+  --muted:#8792a2;
+  --faint:#aab7c4;
+  --accent:#0a5c8f;
+  --accent-soft:#e8f2f9;
+  --h0:#0a5c8f;
+  --h1:#b45309;
+  --ok:#0f7b52;
+  --ok-soft:#e6f5ef;
+  --warn:#b45309;
+  --warn-soft:#fdf4e7;
+  --alert:#a52020;
+  --alert-soft:#fceded;
+  --sans:'IBM Plex Sans Thai',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--sans);
+  background:var(--bg);
+  color:var(--body);
+  font-size:15px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ═══ HEADER ═══ */
+header{
+  background:var(--surface);
+  border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:100;
+}
+.hdr-inner{
+  max-width:1280px;margin:0 auto;
+  padding:14px 28px;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{
+  width:34px;height:34px;border-radius:7px;
+  background:var(--accent);
+  display:grid;place-items:center;
+  color:#fff;font-family:var(--mono);font-size:15px;font-weight:500;
+  flex-shrink:0;
+}
+.brand-txt h1{
+  font-size:16px;font-weight:600;color:var(--ink);
+  line-height:1.2;letter-spacing:-.01em;
+}
+.brand-txt p{
+  font-family:var(--mono);font-size:10px;
+  color:var(--faint);letter-spacing:.1em;text-transform:uppercase;
+  margin-top:2px;
+}
+.hdr-meta{
+  display:flex;align-items:center;gap:16px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+}
+.status-dot{
+  display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--ok);margin-right:5px;
+}
+
+/* ═══ LAYOUT ═══ */
+.shell{
+  max-width:1280px;margin:0 auto;
+  padding:24px 28px 60px;
+  display:grid;grid-template-columns:280px 1fr;gap:24px;
+  align-items:start;
+}
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr;padding:18px 16px 40px}
+}
+
+/* ═══ SIDEBAR ═══ */
+aside{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:18px;
+  position:sticky;
+  top:76px;
+  /* ให้แถบนี้เลื่อนภายในตัวเองได้ เมื่อเนื้อหายาวเกินความสูงหน้าจอ */
+  max-height:calc(100vh - 100px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:var(--line-strong) transparent;
+}
+aside::-webkit-scrollbar{width:7px}
+aside::-webkit-scrollbar-track{background:transparent}
+aside::-webkit-scrollbar-thumb{
+  background:var(--line-strong);
+  border-radius:4px;
+  border:2px solid var(--surface);
+}
+aside::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+@media(max-width:900px){
+  aside{position:static;max-height:none;overflow:visible}
+}
+
+.panel-label{
+  font-family:var(--mono);font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;
+  color:var(--faint);
+  margin:20px 0 10px;
+  padding-bottom:6px;border-bottom:1px solid var(--line);
+}
+.panel-label:first-child{margin-top:0}
+
+.seg{display:flex;background:var(--surface-alt);border-radius:7px;padding:3px;gap:3px;margin-bottom:12px}
+.seg button{
+  flex:1;padding:8px 6px;border:none;background:none;
+  font-family:var(--sans);font-size:12.5px;font-weight:500;
+  color:var(--muted);border-radius:5px;cursor:pointer;
+  transition:all .14s;
+}
+.seg button.on{background:var(--surface);color:var(--accent);box-shadow:0 1px 2px rgba(18,38,63,.07)}
+
+.drop{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  border:1.5px dashed var(--line-strong);
+  border-radius:9px;
+  padding:24px 14px;
+  text-align:center;
+  cursor:pointer;
+  transition:all .16s;
+  background:var(--surface-alt);
+}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop svg{
+  display:block;
+  width:26px;height:26px;
+  stroke:var(--muted);
+  margin:0 0 9px;
+  flex-shrink:0;
+}
+.drop p{
+  font-size:12.5px;color:var(--body);font-weight:500;
+  margin:0;line-height:1.4;
+}
+.drop span{
+  font-size:11px;color:var(--faint);
+  display:block;margin-top:4px;line-height:1.4;
+}
+.drop.has-file{border-color:var(--ok);background:var(--ok-soft)}
+.drop.has-file svg{stroke:var(--ok)}
+.drop.has-file p{color:var(--ok)}
+input[type=file]{display:none}
+
+select{
+  width:100%;padding:9px 11px;
+  border:1px solid var(--line-strong);border-radius:7px;
+  font-family:var(--sans);font-size:13px;color:var(--ink);
+  background:var(--surface);cursor:pointer;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238792a2' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+}
+select:focus{outline:none;border-color:var(--accent)}
+
+.ctrl{margin-bottom:15px}
+.ctrl-hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.ctrl-hd label{font-size:12.5px;font-weight:500;color:var(--ink)}
+.ctrl-hd output{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:500}
+.ctrl-note{font-size:11px;color:var(--faint);line-height:1.45;margin-top:4px}
+
+input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  width:100%;height:3px;border-radius:2px;
+  background:var(--line-strong);outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:15px;height:15px;border-radius:50%;
+  background:var(--accent);cursor:pointer;
+  border:2.5px solid var(--surface);
+  box-shadow:0 0 0 1px var(--line-strong);
+}
+input[type=range]::-moz-range-thumb{
+  width:15px;height:15px;border-radius:50%;
+  background:var(--accent);cursor:pointer;border:2.5px solid var(--surface);
+}
+
+/* ═══ MAIN ═══ */
+main{min-width:0;display:flex;flex-direction:column;gap:18px}
+
+.card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:10px;
+  overflow:hidden;
+}
+.card-hd{
+  padding:13px 18px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.card-hd h2{font-size:14px;font-weight:600;color:var(--ink)}
+.card-hd .tag{
+  font-family:var(--mono);font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+}
+.card-bd{padding:18px}
+
+/* Empty state */
+.empty{
+  text-align:center;padding:70px 24px;
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+}
+.empty-ico{
+  width:48px;height:48px;margin:0 auto 16px;
+  border-radius:11px;background:var(--accent-soft);
+  display:grid;place-items:center;
+}
+.empty-ico svg{width:24px;height:24px;stroke:var(--accent)}
+.empty h3{font-size:16px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.empty p{font-size:13.5px;color:var(--muted);max-width:400px;margin:0 auto}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line)}
+@media(max-width:700px){.metrics{grid-template-columns:repeat(2,1fr)}}
+.metric{background:var(--surface);padding:15px 16px}
+.metric-lbl{
+  font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+  margin-bottom:5px;
+}
+.metric-val{font-family:var(--mono);font-size:27px;font-weight:500;color:var(--ink);line-height:1}
+.metric-val.h0{color:var(--h0)}
+.metric-val.h1{color:var(--h1)}
+.metric-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+/* Verdict */
+.verdict{padding:14px 18px;display:flex;gap:12px;align-items:flex-start;border-top:1px solid var(--line)}
+.verdict-ico{width:20px;height:20px;flex-shrink:0;margin-top:1px}
+.verdict-ico svg{width:20px;height:20px}
+.verdict-bd h4{font-size:13.5px;font-weight:600;margin-bottom:2px}
+.verdict-bd p{font-size:12.5px;line-height:1.6}
+.v-ok{background:var(--ok-soft)}.v-ok h4{color:var(--ok)}.v-ok p{color:#116b4a}.v-ok svg{stroke:var(--ok)}
+.v-warn{background:var(--warn-soft)}.v-warn h4{color:var(--warn)}.v-warn p{color:#8f4409}.v-warn svg{stroke:var(--warn)}
+.v-alert{background:var(--alert-soft)}.v-alert h4{color:var(--alert)}.v-alert p{color:#8a1c1c}.v-alert svg{stroke:var(--alert)}
+
+/* Views grid */
+.views{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1px;background:var(--line)}
+.view{background:var(--surface);padding:14px}
+.view-lbl{
+  font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+  margin-bottom:9px;display:flex;justify-content:space-between;
+}
+.view canvas{
+  width:100%;height:auto;display:block;
+  border:1px solid var(--line);border-radius:6px;background:#000;
+}
+.view canvas.light{background:var(--surface-alt)}
+
+/* Chart wrap */
+.chart-wrap{padding:16px 18px}
+.chart-wrap canvas{width:100%;height:auto;display:block}
+
+/* Legend */
+.legend{display:flex;gap:18px;flex-wrap:wrap;padding:11px 18px;border-top:1px solid var(--line);background:var(--surface-alt)}
+.lg{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--body)}
+.lg i{width:11px;height:11px;border-radius:2.5px;display:block;flex-shrink:0}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{
+  text-align:left;padding:9px 18px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--faint);font-weight:400;
+  border-bottom:1px solid var(--line);
+}
+td{padding:9px 18px;border-bottom:1px solid var(--line);color:var(--body)}
+tr:last-child td{border-bottom:none}
+td.n{font-family:var(--mono);color:var(--ink)}
+tr.hl td{background:var(--accent-soft)}
+
+/* Info box */
+.info{
+  padding:14px 18px;font-size:12.5px;line-height:1.75;
+  color:var(--body);border-top:1px solid var(--line);
+  background:var(--surface-alt);
+}
+.info strong{color:var(--ink);font-weight:600}
+
+/* Accordion */
+details{border-top:1px solid var(--line)}
+details:first-of-type{border-top:none}
+summary{
+  padding:13px 18px;cursor:pointer;list-style:none;
+  font-size:13.5px;font-weight:500;color:var(--ink);
+  display:flex;align-items:center;justify-content:space-between;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'+';font-family:var(--mono);color:var(--faint);font-size:16px}
+details[open] summary::after{content:'−'}
+details[open] summary{border-bottom:1px solid var(--line)}
+.det-bd{padding:15px 18px;font-size:13px;line-height:1.8;color:var(--body)}
+.det-bd p{margin-bottom:10px}
+.det-bd p:last-child{margin-bottom:0}
+.formula{
+  font-family:var(--mono);font-size:12px;
+  background:var(--surface-alt);border:1px solid var(--line);
+  border-radius:6px;padding:11px 14px;margin:10px 0;
+  color:var(--accent);overflow-x:auto;
+}
+
+/* Disclaimer */
+.disclaim{
+  font-size:11.5px;line-height:1.7;color:var(--muted);
+  padding:14px 18px;background:var(--surface-alt);
+  border:1px solid var(--line);border-radius:9px;
+}
+.disclaim strong{color:var(--warn)}
+
+
+/* ═══ AUTO MODE ═══ */
+.auto-box{
+  background:linear-gradient(180deg,var(--accent-soft),#fff);
+  border:1px solid #bcd9ec;border-radius:9px;
+  padding:13px;margin-bottom:16px;
+}
+.auto-hd{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.auto-hd svg{width:15px;height:15px;stroke:var(--accent);flex-shrink:0}
+.auto-hd h3{font-size:12.5px;font-weight:600;color:var(--accent)}
+.auto-box p{font-size:11px;color:#356b8f;line-height:1.5;margin-bottom:10px}
+.btn-auto{
+  width:100%;padding:9px;border:none;border-radius:7px;
+  background:var(--accent);color:#fff;
+  font-family:var(--sans);font-size:12.5px;font-weight:500;
+  cursor:pointer;transition:background .15s;
+}
+.btn-auto:hover{background:#084a73}
+.btn-auto:disabled{background:var(--line-strong);cursor:default}
+.auto-flag{
+  display:inline-flex;align-items:center;gap:4px;
+  font-family:var(--mono);font-size:9px;letter-spacing:.06em;
+  background:var(--accent-soft);color:var(--accent);
+  padding:2px 6px;border-radius:3px;margin-left:6px;
+  text-transform:uppercase;
+}
+.auto-log{
+  margin-top:10px;padding-top:10px;border-top:1px solid #bcd9ec;
+  font-family:var(--mono);font-size:10px;color:#356b8f;line-height:1.75;
+}
+.auto-log div{display:flex;justify-content:space-between;gap:8px}
+.auto-log b{color:var(--accent);font-weight:500}
+
+/* Spinner */
+.busy{display:flex;align-items:center;gap:9px;padding:14px 18px;font-size:12.5px;color:var(--muted)}
+.spin{
+  width:14px;height:14px;border:2px solid var(--line-strong);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:sp .65s linear infinite;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+footer{
+  border-top:1px solid var(--line);background:var(--surface);
+  padding:20px 28px;margin-top:20px;
+}
+.ft-inner{
+  max-width:1280px;margin:0 auto;
+  display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10.5px;color:var(--faint);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-inner">
+    <div class="brand">
+      <div class="brand-mark">β</div>
+      <div class="brand-txt">
+        <h1>NeuroTopography</h1>
+        <p>Topological Tissue Analysis · v1.0</p>
+      </div>
+    </div>
+    <div class="hdr-meta">
+      <span><span class="status-dot"></span>ระบบพร้อมใช้งาน</span>
+      <span id="clock">—</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <aside>
+    <div class="panel-label">แหล่งข้อมูล</div>
+    <div class="seg">
+      <button class="on" data-mode="upload">อัปโหลด MRI</button>
+      <button data-mode="sample">ตัวอย่าง</button>
+    </div>
+
+    <div id="pane-upload">
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="image/png,image/jpeg,image/jpg">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+        </svg>
+        <p id="drop-title">เลือกไฟล์ภาพ</p>
+        <span id="drop-sub">PNG หรือ JPG</span>
+      </label>
+    </div>
+
+    <div id="pane-sample" style="display:none">
+      <select id="sample">
+        <option value="disk">เนื้อเยื่อทึบ — Disk</option>
+        <option value="annulus" selected>โพรงเดี่ยว — Annulus</option>
+        <option value="multi">สองโพรง — Multi-cavity</option>
+        <option value="scatter">ห้าก้อนแยกกัน — Fragmented</option>
+      </select>
+    </div>
+
+    <div class="panel-label">ตั้งค่าอัตโนมัติ</div>
+    <div class="auto-box">
+      <div class="auto-hd">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v4M12 18v4M4.9 4.9l2.9 2.9M16.2 16.2l2.9 2.9M2 12h4M18 12h4M4.9 19.1l2.9-2.9M16.2 7.8l2.9-2.9"/>
+        </svg>
+        <h3>วิเคราะห์ค่าที่เหมาะสมให้</h3>
+      </div>
+      <p>ระบบจะหาค่าความสว่าง ระดับการลดสัญญาณรบกวน และรัศมี ε ที่เหมาะกับภาพนี้โดยอัตโนมัติ</p>
+      <button class="btn-auto" id="btn-auto">ปรับค่าอัตโนมัติ</button>
+      <div class="auto-log" id="auto-log" style="display:none"></div>
+    </div>
+
+    <div class="panel-label">การประมวลผลภาพ</div>
+
+    <div class="ctrl">
+      <div class="ctrl-hd"><label>ค่าความสว่างขั้นต่ำ</label><output id="o-thr">120</output></div>
+      <input type="range" id="thr" min="20" max="240" value="120" step="1">
+      <p class="ctrl-note">พิกเซลที่สว่างกว่าค่านี้จะถูกนับเป็นเนื้อเยื่อ</p>
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-hd"><label>ระดับการลดสัญญาณรบกวน</label><output id="o-blur">1.2</output></div>
+      <input type="range" id="blur" min="0" max="4" value="1.2" step="0.1">
+      <p class="ctrl-note">เกลี่ยภาพให้เรียบก่อนแปลงเป็นจุด</p>
+    </div>
+
+    <div class="ctrl">
+      <div class="ctrl-hd"><label>จำนวนจุดสูงสุด</label><output id="o-pts">120</output></div>
+      <input type="range" id="pts" min="60" max="220" value="120" step="10">
+      <p class="ctrl-note">ยิ่งมากยิ่งละเอียด แต่คำนวณช้าลง</p>
+    </div>
+
+    <div class="panel-label">พารามิเตอร์ Filtration</div>
+
+    <div class="ctrl">
+      <div class="ctrl-hd"><label>รัศมี ε</label><output id="o-eps">0.30</output></div>
+      <input type="range" id="eps" min="0.02" max="0.85" value="0.30" step="0.01">
+      <p class="ctrl-note">รัศมีวงกลมรอบแต่ละจุด — เลื่อนเพื่อดูโครงสร้างเปลี่ยน</p>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="empty" id="empty">
+      <div class="empty-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/>
+        </svg>
+      </div>
+      <h3>ยังไม่มีข้อมูลสำหรับวิเคราะห์</h3>
+      <p>อัปโหลดภาพ MRI หรือเลือกข้อมูลตัวอย่างจากแถบด้านซ้าย เพื่อเริ่มการวิเคราะห์โครงสร้างทางโทโพโลยี</p>
+    </div>
+  </main>
+
+</div>
+
+<footer>
+  <div class="ft-inner">
+    <span>NeuroTopography — Persistent Homology Analysis</span>
+    <span>ประมวลผลบนเครื่องผู้ใช้ ไม่มีการส่งข้อมูลออกภายนอก</span>
+  </div>
+</footer>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   NeuroTopography — TDA engine (pure JavaScript)
+   คำนวณ Vietoris–Rips complex, Betti numbers, persistence
+   ══════════════════════════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+const drop = $('drop');
+
+/* เก็บ HTML ของหน้าว่างไว้ตั้งแต่ต้น เพราะเมื่อ render ครั้งแรก
+   element #empty จะถูกลบออกจาก DOM ทำให้อ่านซ้ำไม่ได้ */
+const EMPTY_HTML = $('empty').outerHTML;
+function showEmpty(){ $('main').innerHTML = EMPTY_HTML; }
+
+let STATE = { pts:null, img:null, gray:null, W:0, H:0, pers:null, mode:'sample' };
+
+/* ── นาฬิกา ── */
+function tick(){
+  const d = new Date();
+  $('clock').textContent = d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+}
+tick(); setInterval(tick,10000);
+
+/* ══════════════════════════════════════════════════════════
+   UNION-FIND — ใช้นับ β₀ (connected components)
+   ══════════════════════════════════════════════════════════ */
+class DSU {
+  constructor(n){ this.p = new Int32Array(n).map((_,i)=>i); this.c = n; }
+  find(x){ while(this.p[x]!==x){ this.p[x]=this.p[this.p[x]]; x=this.p[x]; } return x; }
+  union(a,b){
+    const ra=this.find(a), rb=this.find(b);
+    if(ra===rb) return false;
+    this.p[ra]=rb; this.c--; return true;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   VIETORIS–RIPS + BETTI NUMBERS
+   
+   β₀ นับด้วย union-find
+   β₁ คำนวณจาก Euler characteristic:
+       χ = V − E + F
+       χ = β₀ − β₁   (สำหรับ 2-complex)
+   ดังนั้น  β₁ = β₀ − V + E − F
+   ══════════════════════════════════════════════════════════ */
+function rankBoundary2(tris, E){
+  /* หาอันดับของเมทริกซ์ ∂₂ บนฟีลด์ GF(2)
+     แต่ละสามเหลี่ยมคือหนึ่งคอลัมน์ที่มีเลข 1 อยู่สามตำแหน่ง (ขอบทั้งสาม)
+     ใช้การกำจัดแบบเกาส์โดยเก็บคอลัมน์เป็น bitset เพื่อความเร็ว */
+  const W = (E+31)>>5;
+  const pivot = new Map();
+  let rank = 0;
+  for(const t of tris){
+    const col = new Uint32Array(W);
+    col[t[0]>>5] ^= (1<<(t[0]&31));
+    col[t[1]>>5] ^= (1<<(t[1]&31));
+    col[t[2]>>5] ^= (1<<(t[2]&31));
+    let w = W-1;
+    for(;;){
+      while(w>=0 && !col[w]) w--;
+      if(w<0) break;
+      const hi = (w<<5) + (31 - Math.clz32(col[w]));
+      const pv = pivot.get(hi);
+      if(!pv){ pivot.set(hi, col); rank++; break; }
+      for(let q=0;q<=w;q++) col[q] ^= pv[q];
+    }
+  }
+  return rank;
+}
+
+function bettiAt(pts, D, eps){
+  /* β₀ = จำนวนกลุ่มที่เชื่อมถึงกัน หาด้วย union-find
+     β₁ = dim ker ∂₁ − rank ∂₂
+        = (E − rank ∂₁) − rank ∂₂
+        = (E − (V − β₀)) − rank ∂₂
+     หมายเหตุ: ไม่ใช้สูตร χ = β₀ − β₁ เพราะสูตรนั้นละ β₂ ไว้
+     ซึ่งไม่เป็นศูนย์เมื่อมีสามเหลี่ยมจำนวนมาก */
+  const n = pts.length;
+  const dsu = new DSU(n);
+  const eid = new Map();
+  const adj = Array.from({length:n},()=>[]);
+  let E = 0;
+
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      if(D[i*n+j] <= eps){
+        eid.set(i*n+j, E++);
+        dsu.union(i,j);
+        adj[i].push(j); adj[j].push(i);
+      }
+    }
+  }
+
+  const nbr = adj.map(a=>new Set(a));
+  const tris = [];
+  for(let i=0;i<n;i++){
+    for(const j of adj[i]){
+      if(j<=i) continue;
+      for(const k of adj[j]){
+        if(k<=j) continue;
+        if(nbr[i].has(k)){
+          tris.push([ eid.get(i*n+j), eid.get(j*n+k), eid.get(i*n+k) ]);
+        }
+      }
+    }
+  }
+
+  const b0 = dsu.c;
+  const r2 = rankBoundary2(tris, E);
+  const b1 = Math.max(0, E - (n - b0) - r2);
+  return { b0, b1, V:n, E, F:tris.length, rank2:r2 };
+}
+
+/* ── ตารางระยะทาง ── */
+function distMatrix(pts){
+  const n = pts.length;
+  const D = new Float32Array(n*n);
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      const dx = pts[i][0]-pts[j][0], dy = pts[i][1]-pts[j][1];
+      const d = Math.hypot(dx,dy);
+      D[i*n+j] = d; D[j*n+i] = d;
+    }
+  }
+  return D;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PERSISTENCE — คำนวณ β₀,β₁ ตลอดช่วง ε แล้วสกัดเป็นแถบ
+   ══════════════════════════════════════════════════════════ */
+function computePersistence(pts, steps=40, epsMax=0.85){
+  const D = distMatrix(pts);
+  const curve = [];
+  for(let s=0;s<=steps;s++){
+    const eps = (s/steps)*epsMax;
+    const r = bettiAt(pts, D, eps);
+    curve.push({eps, ...r});
+  }
+
+  // สกัดแถบ β₀ : เริ่มที่ 0 ทุกจุด ตายเมื่อ merge
+  const bars0 = [];
+  for(let s=1;s<curve.length;s++){
+    const drop = curve[s-1].b0 - curve[s].b0;
+    for(let k=0;k<drop;k++) bars0.push({b:0, d:curve[s].eps});
+  }
+  // component สุดท้ายอยู่ตลอด
+  if(curve[curve.length-1].b0 > 0) bars0.push({b:0, d:epsMax});
+
+  // สกัดแถบ β₁ : เกิดเมื่อ β₁ เพิ่ม ตายเมื่อ β₁ ลด
+  const bars1 = [];
+  const open = [];
+  for(let s=1;s<curve.length;s++){
+    const diff = curve[s].b1 - curve[s-1].b1;
+    if(diff>0){ for(let k=0;k<diff;k++) open.push(curve[s].eps); }
+    else if(diff<0){
+      for(let k=0;k<-diff && open.length;k++){
+        bars1.push({b:open.pop(), d:curve[s].eps});
+      }
+    }
+  }
+  while(open.length) bars1.push({b:open.pop(), d:epsMax});
+
+  return { curve, bars0, bars1, D, epsMax };
+}
+
+/* ══════════════════════════════════════════════════════════
+   ตัวอย่างข้อมูล
+   ══════════════════════════════════════════════════════════ */
+function rng(seed){
+  let s = seed;
+  return ()=>{ s = (s*1664525 + 1013904223) % 4294967296; return s/4294967296; };
+}
+
+function makeSample(kind, n=120){
+  /* สุ่มจุดแบบ jittered grid — วางจุดบนตารางแล้วขยับเล็กน้อย
+     ให้ผลกระจายสม่ำเสมอ ไม่เกิดช่องว่างปลอมเหมือนการสุ่มอิสระ */
+  const r = rng(42);
+
+  const regions = {
+    disk:     [{ shape:'disk',    cx:0, cy:0, R:1.0 }],
+    annulus:  [{ shape:'annulus', cx:0, cy:0, R:1.0, r:0.45 }],
+    multi:    [
+      { shape:'annulus', cx:0,    cy:0,     R:1.0,  r:0.45 },
+      { shape:'annulus', cx:2.0,  cy:0.7,   R:0.72, r:0.32 },
+      { shape:'disk',    cx:-1.9, cy:-0.75, R:0.36 },
+    ],
+    scatter:  [
+      { shape:'disk', cx:0,     cy:0,     R:0.42 },
+      { shape:'disk', cx:1.55,  cy:0.6,   R:0.34 },
+      { shape:'disk', cx:-1.5,  cy:0.5,   R:0.32 },
+      { shape:'disk', cx:0.4,   cy:-1.55, R:0.32 },
+      { shape:'disk', cx:-1.1,  cy:-1.25, R:0.28 },
+    ],
+  }[kind] || [{ shape:'disk', cx:0, cy:0, R:1.0 }];
+
+  const areaOf = g => g.shape==='disk'
+    ? Math.PI*g.R*g.R
+    : Math.PI*(g.R*g.R - g.r*g.r);
+  const totalArea = regions.reduce((a,g)=>a+areaOf(g), 0);
+  const h = Math.sqrt(totalArea/n);          // ระยะห่างกริด
+
+  const inside = (g,x,y) => {
+    const d = Math.hypot(x-g.cx, y-g.cy);
+    return g.shape==='disk' ? d<=g.R : (d<=g.R && d>=g.r);
+  };
+
+  const out = [];
+  for(const g of regions){
+    const lo = g.R + h;
+    for(let y=-lo; y<=lo; y+=h){
+      for(let x=-lo; x<=lo; x+=h){
+        const px = g.cx + x + (r()-0.5)*h*0.55;
+        const py = g.cy + y + (r()-0.5)*h*0.55;
+        if(inside(g, px, py)) out.push([px, py]);
+      }
+    }
+  }
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════
+   ประมวลผลภาพ → point cloud
+   ══════════════════════════════════════════════════════════ */
+function gaussBlur(gray, W, H, sigma){
+  if(sigma <= 0.05) return gray.slice();
+  const rad = Math.max(1, Math.ceil(sigma*2.5));
+  const ker = [];
+  let sum = 0;
+  for(let i=-rad;i<=rad;i++){
+    const v = Math.exp(-(i*i)/(2*sigma*sigma));
+    ker.push(v); sum += v;
+  }
+  for(let i=0;i<ker.length;i++) ker[i] /= sum;
+
+  const tmp = new Float32Array(W*H), out = new Float32Array(W*H);
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      let acc=0;
+      for(let k=-rad;k<=rad;k++){
+        const xx = Math.min(W-1, Math.max(0, x+k));
+        acc += gray[y*W+xx]*ker[k+rad];
+      }
+      tmp[y*W+x]=acc;
+    }
+  }
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      let acc=0;
+      for(let k=-rad;k<=rad;k++){
+        const yy = Math.min(H-1, Math.max(0, y+k));
+        acc += tmp[yy*W+x]*ker[k+rad];
+      }
+      out[y*W+x]=acc;
+    }
+  }
+  return out;
+}
+
+function imageToPoints(gray, W, H, thr, sigma, maxPts){
+  const sm = gaussBlur(gray, W, H, sigma);
+  const cand = [];
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      if(sm[y*W+x] > thr) cand.push([x, y]);
+    }
+  }
+  if(cand.length < 6) return { pts:[], binary:sm };
+
+  // สุ่มลดจำนวนจุด
+  let sel = cand;
+  if(cand.length > maxPts){
+    const r = rng(7); sel = [];
+    const step = cand.length/maxPts;
+    for(let i=0;i<maxPts;i++){
+      sel.push(cand[Math.floor(i*step + r()*step)%cand.length]);
+    }
+  }
+
+  // normalize ให้อยู่ใน [-1,1]
+  let xs = sel.map(p=>p[0]), ys = sel.map(p=>p[1]);
+  const x0=Math.min(...xs), x1=Math.max(...xs);
+  const y0=Math.min(...ys), y1=Math.max(...ys);
+  const sc = Math.max(x1-x0, y1-y0) || 1;
+  const cx=(x0+x1)/2, cy=(y0+y1)/2;
+
+  const pts = sel.map(([x,y]) => [ 2*(x-cx)/sc, -2*(y-cy)/sc ]);
+  return { pts, binary:sm };
+}
+
+/* ══════════════════════════════════════════════════════════
+   วาดกราฟ
+   ══════════════════════════════════════════════════════════ */
+function setupCanvas(cv, w, h){
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = w*dpr; cv.height = h*dpr;
+  cv.style.aspectRatio = `${w}/${h}`;
+  const c = cv.getContext('2d');
+  c.scale(dpr,dpr);
+  return c;
+}
+
+function drawComplex(cv, pts, D, eps, showBalls=true){
+  const S = 340;
+  const c = setupCanvas(cv, S, S);
+  c.fillStyle = '#f4f6f8'; c.fillRect(0,0,S,S);
+
+  if(!pts.length) return;
+  const pad = 30, span = S-pad*2;
+  const xs = pts.map(p=>p[0]), ys = pts.map(p=>p[1]);
+  const x0=Math.min(...xs), x1=Math.max(...xs);
+  const y0=Math.min(...ys), y1=Math.max(...ys);
+  const sc = span/Math.max(x1-x0, y1-y0, 0.001);
+  const ox = pad + (span - (x1-x0)*sc)/2 - x0*sc;
+  const oy = pad + (span - (y1-y0)*sc)/2 - y0*sc;
+  const TX = p => [ox + p[0]*sc, S - (oy + p[1]*sc)];
+  const n = pts.length;
+
+  // grid
+  c.strokeStyle='#e3e8ee'; c.lineWidth=0.5;
+  for(let i=1;i<5;i++){
+    const v = pad + span*i/5;
+    c.beginPath(); c.moveTo(v,pad); c.lineTo(v,S-pad); c.stroke();
+    c.beginPath(); c.moveTo(pad,v); c.lineTo(S-pad,v); c.stroke();
+  }
+
+  // ε-balls
+  if(showBalls){
+    c.fillStyle='rgba(10,92,143,0.055)';
+    for(const p of pts){
+      const [x,y]=TX(p);
+      c.beginPath(); c.arc(x,y,eps*sc/2,0,7); c.fill();
+    }
+  }
+
+  // triangles
+  const adj = Array.from({length:n},()=>[]);
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) if(D[i*n+j]<=eps){adj[i].push(j);adj[j].push(i);}
+  const nbr = adj.map(a=>new Set(a));
+  c.fillStyle='rgba(10,92,143,0.09)';
+  for(let i=0;i<n;i++){
+    for(const j of adj[i]){ if(j<=i)continue;
+      for(const k of adj[j]){ if(k<=j)continue;
+        if(nbr[i].has(k)){
+          const a=TX(pts[i]),b=TX(pts[j]),d=TX(pts[k]);
+          c.beginPath(); c.moveTo(a[0],a[1]); c.lineTo(b[0],b[1]); c.lineTo(d[0],d[1]); c.closePath(); c.fill();
+        }
+      }
+    }
+  }
+
+  // edges
+  c.strokeStyle='rgba(10,92,143,0.42)'; c.lineWidth=0.9;
+  c.beginPath();
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) if(D[i*n+j]<=eps){
+    const a=TX(pts[i]),b=TX(pts[j]);
+    c.moveTo(a[0],a[1]); c.lineTo(b[0],b[1]);
+  }
+  c.stroke();
+
+  // points
+  for(const p of pts){
+    const [x,y]=TX(p);
+    c.fillStyle='#0a5c8f'; c.beginPath(); c.arc(x,y,2.6,0,7); c.fill();
+    c.strokeStyle='#fff'; c.lineWidth=0.7; c.stroke();
+  }
+}
+
+function drawBarcode(cv, bars0, bars1, epsMax, epsNow){
+  const all = [...bars0.map(b=>({...b,d0:true})), ...bars1.map(b=>({...b,d0:false}))]
+    .sort((a,b)=> (a.d0===b.d0 ? (b.d-b.b)-(a.d-a.b) : (a.d0?-1:1)));
+  const rowH = 7, pad = {t:14,r:20,b:30,l:44};
+  const W = 640, H = pad.t + all.length*rowH + pad.b;
+  const c = setupCanvas(cv, W, Math.max(H,120));
+  c.fillStyle='#fff'; c.fillRect(0,0,W,Math.max(H,120));
+
+  const pw = W - pad.l - pad.r;
+  const X = e => pad.l + (e/epsMax)*pw;
+
+  // gridlines
+  c.strokeStyle='#e3e8ee'; c.lineWidth=0.5;
+  c.font='400 9.5px "IBM Plex Mono",monospace'; c.fillStyle='#aab7c4'; c.textAlign='center';
+  for(let i=0;i<=5;i++){
+    const e = epsMax*i/5, x = X(e);
+    c.beginPath(); c.moveTo(x,pad.t); c.lineTo(x,H-pad.b); c.stroke();
+    c.fillText(e.toFixed(2), x, H-pad.b+14);
+  }
+
+  // bars
+  all.forEach((b,i)=>{
+    const y = pad.t + i*rowH + rowH/2;
+    c.strokeStyle = b.d0 ? '#0a5c8f' : '#b45309';
+    c.lineWidth = 3.2; c.lineCap='round';
+    c.beginPath(); c.moveTo(X(b.b), y); c.lineTo(X(Math.min(b.d,epsMax)), y); c.stroke();
+  });
+
+  // current ε marker
+  c.strokeStyle='#a52020'; c.lineWidth=1.2; c.setLineDash([4,3]);
+  c.beginPath(); c.moveTo(X(epsNow), pad.t-4); c.lineTo(X(epsNow), H-pad.b); c.stroke();
+  c.setLineDash([]);
+  c.fillStyle='#a52020'; c.font='500 9.5px "IBM Plex Mono",monospace'; c.textAlign='center';
+  c.fillText('ε', X(epsNow), pad.t-6);
+
+  // axis label
+  c.fillStyle='#8792a2'; c.font='400 10px "IBM Plex Sans Thai",sans-serif';
+  c.fillText('ค่า ε (รัศมี)', W/2, H-6);
+  c.save(); c.translate(11, H/2); c.rotate(-Math.PI/2); c.textAlign='center';
+  c.fillText('features', 0, 0); c.restore();
+}
+
+function drawDiagram(cv, bars0, bars1, epsMax, epsNow){
+  const S = 320, pad = {t:16,r:16,b:40,l:46};
+  const c = setupCanvas(cv, S, S);
+  c.fillStyle='#fff'; c.fillRect(0,0,S,S);
+  const pw = S-pad.l-pad.r, ph = S-pad.t-pad.b;
+  const X = e => pad.l + (e/epsMax)*pw;
+  const Y = e => S-pad.b - (e/epsMax)*ph;
+
+  // grid
+  c.strokeStyle='#e3e8ee'; c.lineWidth=0.5;
+  c.font='400 9px "IBM Plex Mono",monospace'; c.fillStyle='#aab7c4';
+  for(let i=0;i<=4;i++){
+    const e = epsMax*i/4;
+    c.beginPath(); c.moveTo(X(e),pad.t); c.lineTo(X(e),S-pad.b); c.stroke();
+    c.beginPath(); c.moveTo(pad.l,Y(e)); c.lineTo(S-pad.r,Y(e)); c.stroke();
+    c.textAlign='center'; c.fillText(e.toFixed(1), X(e), S-pad.b+13);
+    c.textAlign='right'; c.fillText(e.toFixed(1), pad.l-6, Y(e)+3);
+  }
+
+  // diagonal + noise band
+  c.fillStyle='rgba(170,183,196,0.10)';
+  c.beginPath(); c.moveTo(pad.l,S-pad.b); c.lineTo(S-pad.r,pad.t); c.lineTo(S-pad.r,S-pad.b); c.closePath(); c.fill();
+  c.strokeStyle='#cbd5e0'; c.lineWidth=1;
+  c.beginPath(); c.moveTo(pad.l,S-pad.b); c.lineTo(S-pad.r,pad.t); c.stroke();
+
+  // points
+  const plot = (bars,color,shape)=>{
+    for(const b of bars){
+      const x = X(b.b), y = Y(Math.min(b.d,epsMax));
+      c.fillStyle = color; c.strokeStyle='#fff'; c.lineWidth=1;
+      c.beginPath();
+      if(shape==='d'){
+        c.moveTo(x,y-4.4); c.lineTo(x+4.4,y); c.lineTo(x,y+4.4); c.lineTo(x-4.4,y); c.closePath();
+      } else {
+        c.arc(x,y,3.7,0,7);
+      }
+      c.fill(); c.stroke();
+    }
+  };
+  plot(bars0,'#0a5c8f','c');
+  plot(bars1,'#b45309','d');
+
+  // labels
+  c.fillStyle='#8792a2'; c.font='400 10px "IBM Plex Sans Thai",sans-serif'; c.textAlign='center';
+  c.fillText('ε ที่เกิด (birth)', S/2, S-8);
+  c.save(); c.translate(12,S/2); c.rotate(-Math.PI/2); c.textAlign='center';
+  c.fillText('ε ที่ดับ (death)',0,0); c.restore();
+}
+
+function drawCurve(cv, curve, epsNow){
+  const W=640, H=200, pad={t:14,r:16,b:32,l:40};
+  const c = setupCanvas(cv,W,H);
+  c.fillStyle='#fff'; c.fillRect(0,0,W,H);
+  const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+  const maxB = Math.max(4, ...curve.map(p=>Math.max(p.b0,p.b1)));
+  const eMax = curve[curve.length-1].eps;
+  const X = e=>pad.l+(e/eMax)*pw;
+  const Y = v=>H-pad.b-(v/maxB)*ph;
+
+  c.strokeStyle='#e3e8ee'; c.lineWidth=0.5;
+  c.font='400 9px "IBM Plex Mono",monospace'; c.fillStyle='#aab7c4';
+  for(let i=0;i<=4;i++){
+    const v = maxB*i/4;
+    c.beginPath(); c.moveTo(pad.l,Y(v)); c.lineTo(W-pad.r,Y(v)); c.stroke();
+    c.textAlign='right'; c.fillText(Math.round(v), pad.l-6, Y(v)+3);
+  }
+  for(let i=0;i<=5;i++){
+    const e = eMax*i/5;
+    c.textAlign='center'; c.fillText(e.toFixed(2), X(e), H-pad.b+13);
+  }
+
+  const line=(key,color)=>{
+    c.strokeStyle=color; c.lineWidth=1.8; c.beginPath();
+    curve.forEach((p,i)=>{ const x=X(p.eps), y=Y(p[key]); i?c.lineTo(x,y):c.moveTo(x,y); });
+    c.stroke();
+  };
+  line('b0','#0a5c8f');
+  line('b1','#b45309');
+
+  c.strokeStyle='#a52020'; c.lineWidth=1.1; c.setLineDash([4,3]);
+  c.beginPath(); c.moveTo(X(epsNow),pad.t); c.lineTo(X(epsNow),H-pad.b); c.stroke();
+  c.setLineDash([]);
+
+  c.fillStyle='#8792a2'; c.font='400 10px "IBM Plex Sans Thai",sans-serif'; c.textAlign='center';
+  c.fillText('ค่า ε', W/2, H-5);
+}
+
+function drawImageView(cv, gray, W, H, thr, sigma, mode){
+  const size = 340;
+  const c = setupCanvas(cv, size, size);
+  const sm = gaussBlur(gray, W, H, sigma);
+  const img = c.createImageData(W,H);
+  for(let i=0;i<W*H;i++){
+    let v;
+    if(mode==='binary') v = sm[i]>thr ? 255 : 12;
+    else if(mode==='heat'){
+      const t = Math.min(1,Math.max(0,sm[i]/255));
+      const r = Math.round(255*Math.min(1,t*2.2));
+      const g = Math.round(255*Math.max(0,Math.min(1,t*2.2-0.7)));
+      const b = Math.round(255*Math.max(0,t*2.2-1.6));
+      img.data[i*4]=r; img.data[i*4+1]=g; img.data[i*4+2]=b; img.data[i*4+3]=255;
+      continue;
+    }
+    else v = sm[i];
+    img.data[i*4]=v; img.data[i*4+1]=v; img.data[i*4+2]=v; img.data[i*4+3]=255;
+  }
+  const off = document.createElement('canvas');
+  off.width=W; off.height=H;
+  off.getContext('2d').putImageData(img,0,0);
+  c.fillStyle='#000'; c.fillRect(0,0,size,size);
+  const s = Math.min(size/W, size/H);
+  c.imageSmoothingEnabled = true;
+  c.drawImage(off, (size-W*s)/2, (size-H*s)/2, W*s, H*s);
+}
+
+/* ══════════════════════════════════════════════════════════
+   RENDER
+   ══════════════════════════════════════════════════════════ */
+function render(){
+  const pts = STATE.pts;
+  if(!pts || !pts.length){
+    showEmpty();
+    return;
+  }
+
+  const eps = +$('eps').value;
+  const P = STATE.pers;
+  const cur = P.curve.reduce((a,b)=> Math.abs(b.eps-eps)<Math.abs(a.eps-eps)?b:a);
+  const {b0,b1,V,E,F} = cur;
+
+  // ── ตีความผล ──
+  let vClass, vTitle, vText, vIcon;
+  if(b1 === 0){
+    vClass='v-ok'; vTitle='ไม่พบโพรงในโครงสร้าง';
+    vText='ค่า β₁ = 0 หมายความว่าเนื้อเยื่อมีลักษณะทึบต่อเนื่อง ไม่มีช่องว่างภายใน สอดคล้องกับแบบจำลอง Disk';
+    vIcon='<path d="M20 6L9 17l-5-5"/>';
+  } else if(b1 === 1){
+    vClass='v-warn'; vTitle='พบโพรง 1 ตำแหน่ง';
+    vText='ค่า β₁ = 1 บ่งชี้ว่ามีช่องว่างภายในโครงสร้าง 1 แห่ง สอดคล้องกับแบบจำลอง Annulus ซึ่งพบในเนื้อเยื่อที่มีบริเวณตายตรงกลาง';
+    vIcon='<path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>';
+  } else {
+    vClass='v-alert'; vTitle=`พบโพรง ${b1} ตำแหน่ง`;
+    vText=`ค่า β₁ = ${b1} บ่งชี้โครงสร้างที่มีความซับซ้อนสูง มีช่องว่างภายในหลายตำแหน่ง ในเชิงคณิตศาสตร์หมายถึงมีวงปิดอิสระ ${b1} วงที่ไม่ถูกเติมเต็ม`;
+    vIcon='<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>';
+  }
+
+  const persist1 = P.bars1.map(b=>b.d-b.b).sort((a,b)=>b-a);
+  const maxP = persist1.length ? persist1[0] : 0;
+  const sumP = persist1.reduce((a,b)=>a+b,0);
+  const entropy = sumP > 0
+    ? -persist1.reduce((acc,l)=>{ const p=l/sumP; return acc + (p>0? p*Math.log(p):0); },0)
+    : 0;
+
+  const hasImg = STATE.gray !== null;
+
+  $('main').innerHTML = `
+    <div class="card">
+      <div class="card-hd">
+        <h2>ผลการวิเคราะห์ทางโทโพโลยี</h2>
+        <span class="tag">ε = ${eps.toFixed(2)}</span>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-lbl">β₀ — Components</div>
+          <div class="metric-val h0">${b0}</div>
+          <div class="metric-sub">จำนวนกลุ่มที่แยกจากกัน</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">β₁ — Holes</div>
+          <div class="metric-val h1">${b1}</div>
+          <div class="metric-sub">จำนวนโพรงหรือวงปิด</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Max persistence</div>
+          <div class="metric-val">${maxP.toFixed(3)}</div>
+          <div class="metric-sub">อายุของโพรงที่นานที่สุด</div>
+        </div>
+        <div class="metric">
+          <div class="metric-lbl">Entropy</div>
+          <div class="metric-val">${entropy.toFixed(3)}</div>
+          <div class="metric-sub">ความซับซ้อนโดยรวม</div>
+        </div>
+      </div>
+      <div class="verdict ${vClass}">
+        <div class="verdict-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${vIcon}</svg>
+        </div>
+        <div class="verdict-bd">
+          <h4>${vTitle}</h4>
+          <p>${vText}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <h2>${hasImg ? 'ขั้นตอนการประมวลผลภาพ' : 'โครงสร้าง Simplicial Complex'}</h2>
+        <span class="tag">${hasImg ? 'image pipeline' : 'vietoris–rips'}</span>
+      </div>
+      <div class="views">
+        ${hasImg ? `
+        <div class="view">
+          <div class="view-lbl"><span>1 · ภาพต้นฉบับ</span><span>grayscale</span></div>
+          <canvas id="cv-orig"></canvas>
+        </div>
+        <div class="view">
+          <div class="view-lbl"><span>2 · แยกเนื้อเยื่อ</span><span>threshold ${$('thr').value}</span></div>
+          <canvas id="cv-bin"></canvas>
+        </div>
+        <div class="view">
+          <div class="view-lbl"><span>3 · ความเข้มสัญญาณ</span><span>heatmap</span></div>
+          <canvas id="cv-heat"></canvas>
+        </div>` : ''}
+        <div class="view">
+          <div class="view-lbl"><span>${hasImg?'4 · ':''}โครงสร้างที่สร้างขึ้น</span><span>${V} จุด</span></div>
+          <canvas id="cv-cx" class="light"></canvas>
+        </div>
+      </div>
+      <div class="info">
+        แต่ละจุดคือตำแหน่งของเนื้อเยื่อที่สุ่มมา วงกลมจาง ๆ คือรัศมี ε รอบจุด
+        <strong>เมื่อวงสองวงแตะกันจะเกิดเส้นเชื่อม</strong> และเมื่อสามจุดเชื่อมกันครบทุกคู่จะเกิดสามเหลี่ยมทึบ
+        ช่องว่างที่ยังไม่ถูกสามเหลี่ยมเติมเต็มคือค่า β₁
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <h2>Persistence Barcode</h2>
+        <span class="tag">${P.bars0.length + P.bars1.length} features</span>
+      </div>
+      <div class="chart-wrap"><canvas id="cv-bar"></canvas></div>
+      <div class="legend">
+        <span class="lg"><i style="background:#0a5c8f"></i>β₀ — กลุ่มที่แยกจากกัน</span>
+        <span class="lg"><i style="background:#b45309"></i>β₁ — โพรงหรือวงปิด</span>
+        <span class="lg"><i style="background:#a52020"></i>ตำแหน่ง ε ปัจจุบัน</span>
+      </div>
+      <div class="info">
+        แต่ละแถบแทนโครงสร้างหนึ่งหน่วย ปลายซ้ายคือ ε ที่มันเกิด ปลายขวาคือ ε ที่มันหายไป
+        <strong>แถบยาวคือโครงสร้างจริง</strong> ส่วนแถบสั้นมักเป็นสัญญาณรบกวนจากการสแกน
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <h2>Persistence Diagram และการเปลี่ยนแปลงของ Betti</h2>
+        <span class="tag">birth × death</span>
+      </div>
+      <div class="views">
+        <div class="view">
+          <div class="view-lbl"><span>Persistence Diagram</span></div>
+          <canvas id="cv-dgm" class="light"></canvas>
+        </div>
+        <div class="view">
+          <div class="view-lbl"><span>Betti Curve</span></div>
+          <canvas id="cv-curve" class="light"></canvas>
+        </div>
+      </div>
+      <div class="info">
+        ในแผนภาพซ้าย จุดที่อยู่ <strong>ห่างจากเส้นทแยงมุม</strong> คือโครงสร้างที่มีนัยสำคัญ
+        ส่วนจุดที่เกาะติดเส้นทแยงคือสัญญาณรบกวน · กราฟขวาแสดงว่า β₀ และ β₁ เปลี่ยนไปอย่างไรเมื่อ ε เพิ่มขึ้น
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><h2>รายละเอียดเชิงตัวเลข</h2><span class="tag">simplex count</span></div>
+      <table>
+        <tr><th>รายการ</th><th>สัญลักษณ์</th><th style="text-align:right">ค่า</th></tr>
+        <tr><td>จุด (0-simplex)</td><td class="n">V</td><td class="n" style="text-align:right">${V}</td></tr>
+        <tr><td>เส้นเชื่อม (1-simplex)</td><td class="n">E</td><td class="n" style="text-align:right">${E}</td></tr>
+        <tr><td>สามเหลี่ยม (2-simplex)</td><td class="n">F</td><td class="n" style="text-align:right">${F}</td></tr>
+        <tr><td>อันดับของ ∂₂ บน GF(2)</td><td class="n">rank ∂₂</td><td class="n" style="text-align:right">${cur.rank2 ?? 0}</td></tr>
+        <tr><td>วงปิดอิสระในกราฟ</td><td class="n">E − V + β₀</td><td class="n" style="text-align:right">${E-V+b0}</td></tr>
+        <tr class="hl"><td>จำนวนกลุ่ม</td><td class="n">β₀</td><td class="n" style="text-align:right">${b0}</td></tr>
+        <tr class="hl"><td>จำนวนโพรง</td><td class="n">β₁ = (E−V+β₀) − rank ∂₂</td><td class="n" style="text-align:right">${b1}</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <details open>
+        <summary>หลักการทางคณิตศาสตร์ที่ใช้</summary>
+        <div class="det-bd">
+          <p><strong>1 · แปลงภาพเป็นกลุ่มจุด</strong><br>
+          เลือกเฉพาะพิกเซลที่สว่างกว่าค่าที่กำหนด แล้วปรับพิกัดให้อยู่ในช่วง [−1, 1] เพื่อให้ผลไม่ขึ้นกับขนาดภาพ</p>
+
+          <p><strong>2 · สร้าง Vietoris–Rips Complex</strong><br>
+          เชื่อมจุดคู่ใดก็ตามที่อยู่ห่างกันไม่เกิน ε และเติมสามเหลี่ยมเมื่อสามจุดเชื่อมกันครบทุกคู่</p>
+          <div class="formula">VR(X, ε) = { σ ⊆ X : d(u,v) ≤ ε ทุกคู่ u,v ∈ σ }</div>
+
+          <p><strong>3 · คำนวณ Betti numbers</strong><br>
+          β₀ นับจำนวนกลุ่มที่เชื่อมถึงกันด้วยอัลกอริทึม union–find
+          ส่วน β₁ คำนวณจากนิยามของกลุ่มโฮโมโลยีโดยตรง</p>
+          <div class="formula">H₁ = ker ∂₁ / im ∂₂<br><br>β₁ = dim ker ∂₁ − rank ∂₂<br>&nbsp;&nbsp;&nbsp;= (E − rank ∂₁) − rank ∂₂<br>&nbsp;&nbsp;&nbsp;= (E − V + β₀) − rank ∂₂</div>
+          <p>โดย rank ∂₂ หาจากการกำจัดแบบเกาส์บนฟีลด์ GF(2) แต่ละสามเหลี่ยมคือหนึ่งคอลัมน์
+          ที่มีเลข 1 อยู่สามตำแหน่งตามขอบทั้งสามของมัน</p>
+          <p style="font-size:12px;color:var(--muted)">หมายเหตุ: ระบบไม่ใช้สูตร χ = β₀ − β₁ เพราะสูตรนั้นละ β₂ ไว้
+          ซึ่งไม่เป็นศูนย์เมื่อโครงสร้างมีสามเหลี่ยมจำนวนมาก การใช้สูตรดังกล่าวจะให้ค่า β₁ ที่ต่ำกว่าความจริง</p>
+
+          <p><strong>4 · Persistence</strong><br>
+          เพิ่มค่า ε ทีละน้อยแล้วบันทึกว่าโครงสร้างแต่ละหน่วยเกิดที่ ε ใดและหายที่ ε ใด ผลลัพธ์คือ barcode ที่ทนต่อสัญญาณรบกวนตาม Stability Theorem</p>
+        </div>
+      </details>
+      <details>
+        <summary>อัลกอริทึมการตั้งค่าอัตโนมัติ</summary>
+        <div class="det-bd">
+          <p><strong>1 · Otsu's Method — หาค่าความสว่างที่แบ่งภาพได้ดีที่สุด</strong><br>
+          ภาพ MRI มีพิกเซลสองกลุ่มคือพื้นหลังมืดกับเนื้อเยื่อสว่าง อัลกอริทึมจะทดลองทุกค่า t
+          แล้วเลือกค่าที่ทำให้สองกลุ่มนี้แยกจากกันชัดที่สุด วัดด้วยความแปรปรวนระหว่างกลุ่ม</p>
+          <div class="formula">σ²(t) = w₀(t)·w₁(t)·[μ₀(t) − μ₁(t)]²<br><br>t* = argmax σ²(t)</div>
+          <p style="font-size:12px;color:var(--muted)">Otsu, N. (1979). A threshold selection method from gray-level histograms.
+          <em>IEEE Transactions on Systems, Man, and Cybernetics</em>, 9(1), 62–66.</p>
+
+          <p style="margin-top:16px"><strong>2 · ประเมินสัญญาณรบกวนด้วย Laplacian</strong><br>
+          สัญญาณรบกวนทำให้ค่าพิกเซลข้างเคียงต่างกันแบบสุ่ม ตัวดำเนินการ Laplacian
+          จะขยายความต่างนั้นให้วัดได้ ยิ่งค่าเฉลี่ยสูงแปลว่ามี noise มาก ต้องเกลี่ยภาพมากขึ้น</p>
+          <div class="formula">σ_noise ≈ √(π/2) · mean(|L ∗ I|) / 6</div>
+          <p style="font-size:12px;color:var(--muted)">Immerkær, J. (1996). Fast noise variance estimation.
+          <em>Computer Vision and Image Understanding</em>, 64(2), 300–302.</p>
+
+          <p style="margin-top:16px"><strong>3 · หาค่า ε ที่ให้ผลเสถียรที่สุด</strong><br>
+          ระบบจะไล่ดูกราฟ Betti ตลอดช่วง ε แล้วหาช่วงที่ค่า β₁ คงที่ยาวนานที่สุด
+          ตามหลัก Stability Theorem ช่วงที่ค่าคงที่นานคือมาตราส่วนที่โครงสร้างแท้จริงปรากฏ
+          ส่วนช่วงที่ค่ากระโดดไปมาเป็นผลจากสัญญาณรบกวน</p>
+          <div class="formula">ε* = จุดกึ่งกลางของช่วง [ε₁, ε₂]<br>ที่ทำให้ β₁ คงที่และยาวที่สุด</div>
+
+          <p style="margin-top:14px">ทั้งสามขั้นตอนเป็นอัลกอริทึมทางคณิตศาสตร์ที่ตรวจสอบย้อนกลับได้
+          ไม่ใช่แบบจำลองที่ต้องฝึกด้วยข้อมูล จึงอธิบายที่มาของทุกค่าได้อย่างชัดเจน</p>
+        </div>
+      </details>
+      <details>
+        <summary>เกณฑ์อ้างอิงในการตีความ</summary>
+        <div class="det-bd">
+          <table style="margin:0 -18px;width:calc(100% + 36px)">
+            <tr><th>ลักษณะโครงสร้าง</th><th>β₀</th><th>β₁</th><th>Entropy</th></tr>
+            <tr><td>เนื้อเยื่อทึบต่อเนื่อง</td><td class="n">1</td><td class="n">0</td><td>ต่ำ</td></tr>
+            <tr><td>โพรงเดี่ยว ขอบเรียบ</td><td class="n">1</td><td class="n">1</td><td>ต่ำ</td></tr>
+            <tr><td>โพรงหลายตำแหน่ง</td><td class="n">1</td><td class="n">2–3</td><td>ปานกลาง</td></tr>
+            <tr><td>โครงสร้างซับซ้อนสูง</td><td class="n">≥2</td><td class="n">≥4</td><td>สูง</td></tr>
+            <tr><td>แตกกระจายหลายก้อน</td><td class="n">≥4</td><td class="n">แปรผัน</td><td>สูง</td></tr>
+          </table>
+          <p style="margin-top:14px">เกณฑ์เหล่านี้เป็นแนวทางเชิงคณิตศาสตร์สำหรับการวิเคราะห์รูปทรง ไม่ใช่เกณฑ์วินิจฉัยทางคลินิก</p>
+        </div>
+      </details>
+    </div>
+
+    <div class="disclaim">
+      <strong>ข้อจำกัดของระบบ</strong> — ระบบนี้วัดคุณสมบัติเชิงโทโพโลยีของรูปทรงในภาพเท่านั้น
+      ไม่ได้ทำการวินิจฉัยทางการแพทย์ ผลลัพธ์ขึ้นกับค่าพารามิเตอร์ที่ผู้ใช้ตั้ง
+      และวิเคราะห์ภาพสองมิติเพียงภาพเดียว การประเมินทางคลินิกต้องดำเนินการโดยแพทย์ผู้เชี่ยวชาญร่วมกับข้อมูลอื่นเสมอ
+    </div>
+  `;
+
+  // วาดกราฟทั้งหมด
+  if(hasImg){
+    drawImageView($('cv-orig'), STATE.gray, STATE.W, STATE.H, +$('thr').value, 0, 'gray');
+    drawImageView($('cv-bin'),  STATE.gray, STATE.W, STATE.H, +$('thr').value, +$('blur').value, 'binary');
+    drawImageView($('cv-heat'), STATE.gray, STATE.W, STATE.H, +$('thr').value, +$('blur').value, 'heat');
+  }
+  drawComplex($('cv-cx'), pts, P.D, eps);
+  drawBarcode($('cv-bar'), P.bars0, P.bars1, P.epsMax, eps);
+  drawDiagram($('cv-dgm'), P.bars0, P.bars1, P.epsMax, eps);
+  drawCurve($('cv-curve'), P.curve, eps);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PIPELINE
+   ══════════════════════════════════════════════════════════ */
+function busy(msg){
+  $('main').innerHTML = `<div class="card"><div class="busy"><div class="spin"></div>${msg}</div></div>`;
+}
+
+function recompute(){
+  /* คำนวณ persistence ใหม่ทั้งหมด — ใช้เวลาสูงสุดราว 1 วินาที */
+  if(STATE.mode==='sample'){
+    STATE.gray = null;
+    STATE.pts = makeSample($('sample').value, +$('pts').value);
+  } else if(STATE.gray){
+    const r = imageToPoints(STATE.gray, STATE.W, STATE.H,
+                            +$('thr').value, +$('blur').value, +$('pts').value);
+    STATE.pts = r.pts;
+  } else return;
+
+  if(!STATE.pts.length){ render(); return; }
+  STATE.pers = computePersistence(STATE.pts, 40, 0.85);
+  render();
+  STATE.dirty = false;
+}
+
+function debounce(fn, ms){
+  let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); };
+}
+const recomputeSlow = debounce(()=>{
+  busy('กำลังคำนวณโครงสร้างใหม่…');
+  setTimeout(recompute, 20);
+}, 260);
+
+/* ── โหมด ── */
+document.querySelectorAll('.seg button').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('.seg button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    STATE.mode = b.dataset.mode;
+    $('pane-upload').style.display = STATE.mode==='upload' ? '' : 'none';
+    $('pane-sample').style.display = STATE.mode==='sample' ? '' : 'none';
+    if(STATE.mode==='sample'){ busy('กำลังสร้างข้อมูลตัวอย่าง…'); setTimeout(recompute,30); }
+    else if(STATE.gray){ busy('กำลังประมวลผล…'); setTimeout(recompute,30); }
+    else showEmpty();
+  };
+});
+
+/* ── ไฟล์ ── */
+function loadFile(f){
+  if(!f) return;
+  busy('กำลังอ่านไฟล์ภาพ…');
+  const nm = f.name.length > 22 ? f.name.slice(0,19)+'…' : f.name;
+  $('drop-title').textContent = nm;
+  $('drop-sub').textContent = 'แตะเพื่อเปลี่ยนไฟล์';
+  drop.classList.add('has-file');
+  const img = new Image();
+  img.onload = ()=>{
+    const maxDim = 220;
+    const s = Math.min(1, maxDim/Math.max(img.width, img.height));
+    const W = Math.max(1,Math.round(img.width*s)), H = Math.max(1,Math.round(img.height*s));
+    const cv = document.createElement('canvas');
+    cv.width=W; cv.height=H;
+    const c = cv.getContext('2d');
+    c.drawImage(img,0,0,W,H);
+    const d = c.getImageData(0,0,W,H).data;
+    const gray = new Float32Array(W*H);
+    for(let i=0;i<W*H;i++){
+      gray[i] = 0.299*d[i*4] + 0.587*d[i*4+1] + 0.114*d[i*4+2];
+    }
+    STATE.gray=gray; STATE.W=W; STATE.H=H;
+    setTimeout(recompute, 20);
+  };
+  img.onerror = ()=>{
+    drop.classList.remove('has-file');
+    $('drop-title').textContent = 'เลือกไฟล์ภาพ';
+    $('drop-sub').textContent = 'PNG หรือ JPG';
+    $('main').innerHTML = `<div class="card"><div class="info">ไม่สามารถอ่านไฟล์นี้ได้ กรุณาเลือกไฟล์ PNG หรือ JPG</div></div>`;
+  };
+  img.src = URL.createObjectURL(f);
+}
+
+['dragenter','dragover'].forEach(ev=> drop.addEventListener(ev, e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=> drop.addEventListener(ev, e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop', e=> loadFile(e.dataTransfer.files[0]));
+$('file').onchange = e => loadFile(e.target.files[0]);
+
+/* ── สไลเดอร์ ── */
+const bind = (id, out, fmt, heavy)=>{
+  const el = $(id);
+  el.oninput = ()=>{
+    $(out).textContent = fmt(el.value);
+    if(heavy) recomputeSlow();
+    else if(STATE.pts && STATE.pers) render();
+  };
+};
+bind('thr','o-thr', v=>v, true);
+bind('blur','o-blur', v=>(+v).toFixed(1), true);
+bind('pts','o-pts', v=>v, true);
+bind('eps','o-eps', v=>(+v).toFixed(2), false);
+$('sample').onchange = ()=>{ busy('กำลังสร้างข้อมูล…'); setTimeout(recompute,30); };
+
+
+/* ══════════════════════════════════════════════════════════
+   การหาค่าพารามิเตอร์อัตโนมัติ
+   ใช้อัลกอริทึมคณิตศาสตร์ล้วน อธิบายได้ทุกขั้นตอน
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 1 · Otsu's Method — หาค่าความสว่างที่แบ่งภาพได้ดีที่สุด ──
+   หลักการ: หาค่า t ที่ทำให้ความแปรปรวนระหว่างสองกลุ่มสูงสุด
+   σ²(t) = w₀(t)·w₁(t)·[μ₀(t) − μ₁(t)]²
+   ที่มา: Otsu, N. (1979) IEEE Trans. Syst. Man Cybern.          */
+function otsuThreshold(gray){
+  const hist = new Float64Array(256);
+  for(let i=0;i<gray.length;i++){
+    hist[Math.min(255, Math.max(0, Math.round(gray[i])))]++;
+  }
+  const total = gray.length;
+  let sum = 0;
+  for(let t=0;t<256;t++) sum += t*hist[t];
+
+  let sumB=0, wB=0, maxVar=-1, best=128;
+  for(let t=0;t<256;t++){
+    wB += hist[t];
+    if(wB === 0) continue;
+    const wF = total - wB;
+    if(wF === 0) break;
+    sumB += t*hist[t];
+    const mB = sumB/wB;
+    const mF = (sum-sumB)/wF;
+    const between = wB*wF*(mB-mF)*(mB-mF);
+    if(between > maxVar){ maxVar = between; best = t; }
+  }
+  return best;
+}
+
+/* ── 2 · ประเมินสัญญาณรบกวนด้วย Laplacian ──
+   หลักการ: ความแปรปรวนของ Laplacian แปรผันตามระดับ noise
+   σ_noise ≈ sqrt(π/2) · mean(|L * I|) / 6
+   ที่มา: Immerkær, J. (1996) Fast Noise Variance Estimation    */
+function estimateNoise(gray, W, H){
+  let acc = 0, cnt = 0;
+  for(let y=1;y<H-1;y++){
+    for(let x=1;x<W-1;x++){
+      const i = y*W+x;
+      const L = 4*gray[i]
+              - gray[i-1] - gray[i+1]
+              - gray[i-W] - gray[i+W];
+      acc += Math.abs(L); cnt++;
+    }
+  }
+  if(!cnt) return 1.0;
+  const sigmaNoise = Math.sqrt(Math.PI/2) * (acc/cnt) / 6;
+  // แปลงระดับ noise เป็นค่า sigma ของ Gaussian blur ที่เหมาะสม
+  const blur = 0.4 + Math.min(3.2, sigmaNoise * 0.22);
+  return Math.round(blur*10)/10;
+}
+
+/* ── 3 · หาค่า ε ที่ให้ผลเสถียรที่สุด ──
+   หลักการ: หาช่วง ε ที่ β₁ คงที่ยาวนานที่สุด (persistence สูงสุด)
+   ช่วงนั้นคือมาตราส่วนที่โครงสร้างแท้จริงปรากฏชัด             */
+function findStableEpsilon(curve){
+  /* เลือกมาตราส่วนที่โครงสร้างนิ่งที่สุด
+     พิจารณาคู่ (β₀, β₁) พร้อมกัน แล้วหาช่วงที่ค่าทั้งคู่คงที่ยาวที่สุด
+     ตามหลัก Stability Theorem ช่วงที่ยาวคือมาตราส่วนที่โครงสร้างแท้จริงปรากฏ
+     ส่วนช่วงสั้นเป็นผลจากการสุ่มตัวอย่างและสัญญาณรบกวน */
+  const runs = [];
+  let i = 0;
+  while(i < curve.length){
+    const b0 = curve[i].b0, b1 = curve[i].b1;
+    let j = i;
+    while(j+1 < curve.length && curve[j+1].b0===b0 && curve[j+1].b1===b1) j++;
+    runs.push({
+      b0, b1,
+      from: curve[i].eps,
+      to:   curve[j].eps,
+      len:  curve[j].eps - curve[i].eps
+    });
+    i = j+1;
+  }
+
+  /* ไม่นับช่วงเริ่มต้นที่จุดยังไม่เชื่อมกัน (β₀ มากผิดปกติ)
+     เพราะยังไม่ใช่โครงสร้างที่มีความหมาย */
+  const settled = runs.filter(r => r.b0 <= Math.max(6, curve[0].b0*0.08));
+  const pool = settled.length ? settled : runs;
+  const best = pool.reduce((a,b) => b.len > a.len ? b : a);
+
+  return {
+    eps: Math.round(((best.from+best.to)/2)*100)/100,
+    betti: best.b1,
+    comps: best.b0,
+    from: best.from,
+    to: best.to,
+    len: best.len
+  };
+}
+
+/* ── ตัวควบคุมโหมดอัตโนมัติ ── */
+function runAuto(){
+  const btn = $('btn-auto');
+  const log = $('auto-log');
+  btn.disabled = true;
+  btn.textContent = 'กำลังวิเคราะห์…';
+
+  setTimeout(()=>{
+    const steps = [];
+
+    if(STATE.mode === 'upload' && STATE.gray){
+      // ขั้นที่ 1 — หาค่าความสว่างด้วย Otsu
+      const t = otsuThreshold(STATE.gray);
+      $('thr').value = t;
+      $('o-thr').textContent = t;
+      steps.push(['ค่าความสว่าง (Otsu)', t]);
+
+      // ขั้นที่ 2 — ประเมิน noise
+      const b = estimateNoise(STATE.gray, STATE.W, STATE.H);
+      $('blur').value = b;
+      $('o-blur').textContent = b.toFixed(1);
+      steps.push(['ลดสัญญาณรบกวน', b.toFixed(1)]);
+
+      // ขั้นที่ 3 — เลือกจำนวนจุดตามขนาดภาพ
+      let above = 0;
+      for(let i=0;i<STATE.gray.length;i++) if(STATE.gray[i] > t) above++;
+      const np = Math.max(80, Math.min(300, Math.round(Math.sqrt(above)*7/10)*10));
+      $('pts').value = np;
+      $('o-pts').textContent = np;
+      steps.push(['จำนวนจุด', np]);
+    }
+
+    // คำนวณใหม่ด้วยค่าที่ได้
+    recompute();
+
+    // ขั้นที่ 4 — หาค่า ε ที่เสถียรที่สุด
+    if(STATE.pers){
+      const r = findStableEpsilon(STATE.pers.curve);
+      $('eps').value = r.eps;
+      $('o-eps').textContent = r.eps.toFixed(2);
+      steps.push(['รัศมี ε ที่เสถียร', r.eps.toFixed(2)]);
+      steps.push(['β₁ ในช่วงนั้น', r.betti]);
+      render();
+    }
+
+    log.style.display = '';
+    log.innerHTML = steps.map(([k,v]) =>
+      `<div><span>${k}</span><b>${v}</b></div>`
+    ).join('');
+
+    btn.disabled = false;
+    btn.textContent = 'ปรับค่าอัตโนมัติอีกครั้ง';
+    STATE.autoUsed = true;
+  }, 60);
+}
+
+$('btn-auto').onclick = runAuto;
+
+/* ── เริ่มต้น ── */
+document.querySelector('.seg button[data-mode="sample"]').click();
+</script>
+
+</body>
+</html>
