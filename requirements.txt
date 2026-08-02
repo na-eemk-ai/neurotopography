@@ -1,0 +1,6 @@
+streamlit
+gudhi
+numpy
+scipy
+matplotlib
+pillow
